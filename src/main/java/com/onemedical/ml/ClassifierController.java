@@ -15,16 +15,16 @@ public class ClassifierController {
 
   @PostMapping("/classification/message")
   public MessageClassification getClassification(@RequestBody Message message) {
-    log.info("message {}: {}", message.subject, message.body);
+    log.info("message subject: [{}], body: [{}]", message.subject, message.body);
 
     LabelProbability admin = new LabelProbability("admin", 0.1);
     LabelProbability medical = new LabelProbability("medical", 0.8);
     LabelProbability tech = new LabelProbability("tech", 0.1);
 
-    LabelProbability[] recipients = new LabelProbability[] { admin, medical, tech };
+    LabelProbability[] roles = new LabelProbability[] { admin, medical, tech };
 
     MessageClassification classification = new MessageClassification();
-    classification.recipients = recipients;
+    classification.roles = roles;
     return classification;
   }
 }
