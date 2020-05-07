@@ -42,7 +42,7 @@ public class Classifier {
     this.listeners = listeners;
   }
 
-  public LabelsSource getRecipientLabels() {
+  public LabelsSource getRoleLabels() {
     LabelsSource labels = new LabelsSource();
     labels.storeLabel("admin");
     labels.storeLabel("tech");
@@ -50,9 +50,9 @@ public class Classifier {
     return labels;
   }
 
-  public MultiLayerNetwork getRecipientModel() {
+  public MultiLayerNetwork getRoleModel() {
 
-    LabelsSource labelsSource = getRecipientLabels();
+    LabelsSource labelsSource = getRoleLabels();
 
     initVectorizer();
 
