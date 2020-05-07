@@ -31,9 +31,9 @@ Configure VSCode settings.json
 "java.home": "/Library/Java/JavaVirtualMachines/openjdk-11.0.2.jdk/Contents/Home"
 ```
 
-Add path to mvn executable to vscode settings
-Disable setting for using mvn wrapper
-TODO lookup setting names
+Add path to mvn executable to vscode settings  
+Disable setting for using mvn wrapper  
+TODO lookup setting names  
 
 ## Build the application
 ```
