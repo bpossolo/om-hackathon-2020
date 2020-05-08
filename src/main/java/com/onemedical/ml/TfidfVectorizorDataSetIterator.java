@@ -14,6 +14,8 @@ import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 
 public class TfidfVectorizorDataSetIterator implements DataSetIterator {
   
+  private static final long serialVersionUID = 1L;
+  
   private final LabelAwareIterator delegate;
   private final LabelsSource labelsSource;
   private final TfidfVectorizer vectorizer;

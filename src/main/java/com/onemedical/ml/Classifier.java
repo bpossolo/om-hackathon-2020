@@ -50,7 +50,7 @@ public class Classifier {
     return labels;
   }
 
-  public MultiLayerNetwork getRoleModel() {
+  public MultiLayerNetwork getRoleNetwork() {
 
     LabelsSource labelsSource = getRoleLabels();
 
