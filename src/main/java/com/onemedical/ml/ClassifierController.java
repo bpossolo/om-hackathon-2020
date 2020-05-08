@@ -7,6 +7,7 @@ import java.util.stream.IntStream;
 
 import org.deeplearning4j.bagofwords.vectorizer.TfidfVectorizer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
+import org.deeplearning4j.text.documentiterator.LabelsSource;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,14 +23,17 @@ public class ClassifierController {
 
   private static final Logger log = LoggerFactory.getLogger(ClassifierController.class);
 
-  private MultiLayerNetwork roleClassifier;
-  private TfidfVectorizer vectorizer;
+  private final MultiLayerNetwork roleClassifier;
+  private final LabelsSource roleLabelsSource;
+  private final TfidfVectorizer vectorizer;
 
   public ClassifierController(
     @Qualifier("role-classifier") MultiLayerNetwork roleClassifier,
+    @Qualifier("role-labels") LabelsSource roleLabelsSource,
     TfidfVectorizer vectorizer
   ) {
     this.roleClassifier = roleClassifier;
+    this.roleLabelsSource = roleLabelsSource;
     this.vectorizer = vectorizer;
   }
 
@@ -40,9 +44,10 @@ public class ClassifierController {
     String text = serialize(message);
     INDArray vector = vectorizer.transform(text);
     INDArray roleProbabilities = roleClassifier.output(vector);
-    List<String> roleLabels = null;
+    List<String> roleLabels = roleLabelsSource.getLabels();
 
     MessageClassification classification = new MessageClassification();
+    classification.message = message;
     classification.roles = getLabelledProbabilities(roleLabels, roleProbabilities);
     
     return classification;
