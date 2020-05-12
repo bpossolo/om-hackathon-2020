@@ -1,8 +1,7 @@
 package com.onemedical.ml;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.deeplearning4j.bagofwords.vectorizer.TfidfVectorizer;
 import org.deeplearning4j.text.documentiterator.LabelAwareIterator;
@@ -50,18 +49,18 @@ public class TfidfVectorizorDataSetIterator implements DataSetIterator {
 
   @Override
   public DataSet next() {
-    LabelledDocument doc = delegate.next();
-    String text = doc.getContent();
-    String label = doc.getLabels().get(0);
-    return vectorizer.vectorize(text, label);
+    return next(batch);
   }
 
   @Override
   public DataSet next(int num) {
-    List<DataSet> datasets = IntStream
-      .range(0, num)
-      .mapToObj(i -> this.next())
-      .collect(Collectors.toList());
+    List<DataSet> datasets = new ArrayList<>(num);
+    for (int i = 0; i < num && delegate.hasNext(); i++) {
+      LabelledDocument doc = delegate.next();
+      String text = doc.getContent();
+      String label = doc.getLabels().get(0);
+      datasets.add(vectorizer.vectorize(text, label));
+    }
     return DataSet.merge(datasets);
   }
 

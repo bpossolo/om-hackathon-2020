@@ -1,8 +1,17 @@
 package com.onemedical.ml;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 import org.deeplearning4j.bagofwords.vectorizer.TfidfVectorizer;
+import org.deeplearning4j.earlystopping.EarlyStoppingConfiguration;
+import org.deeplearning4j.earlystopping.EarlyStoppingResult;
+import org.deeplearning4j.earlystopping.saver.InMemoryModelSaver;
+import org.deeplearning4j.earlystopping.scorecalc.DataSetLossCalculator;
+import org.deeplearning4j.earlystopping.termination.MaxEpochsTerminationCondition;
+import org.deeplearning4j.earlystopping.trainer.EarlyStoppingTrainer;
+import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
@@ -14,6 +23,7 @@ import org.deeplearning4j.text.documentiterator.LabelAwareIterator;
 import org.deeplearning4j.text.documentiterator.LabelledDocument;
 import org.deeplearning4j.text.documentiterator.LabelsSource;
 import org.deeplearning4j.text.documentiterator.SimpleLabelAwareIterator;
+import org.nd4j.evaluation.classification.Evaluation;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.learning.config.Sgd;
@@ -28,8 +38,8 @@ public class Trainer {
   private static final int NumEpochs = 5;
   private static final int Seed = 49;
   private static final double LearningRate = 0.01;
-  private static final int NumNeurons = 100;
-  private static final int Batch = 50;
+  private static final int NumNeurons = 200;
+  private static final int Batch = 4;
 
   private final TrainingDataService trainingDataService;
   private final TrainingListener[] listeners;
@@ -51,43 +61,60 @@ public class Trainer {
   public MultiLayerNetwork trainRoleClassifier() {
 
     List<LabelledDocument> trainingData = trainingDataService.getTrainingData();
-    LabelAwareIterator delegate = new SimpleLabelAwareIterator(trainingData);
-    DataSetIterator iterator = new TfidfVectorizorDataSetIterator(delegate, roleLabels, vectorizer, Batch);
+    LabelAwareIterator trainingDelegate = new SimpleLabelAwareIterator(trainingData);
+    DataSetIterator trainingIterator = new TfidfVectorizorDataSetIterator(trainingDelegate, roleLabels, vectorizer, Batch);
+    
+    List<LabelledDocument> validationData = trainingDataService.getValidationData();
+    LabelAwareIterator validationDelegate = new SimpleLabelAwareIterator(validationData);
+    DataSetIterator validationIterator = new TfidfVectorizorDataSetIterator(validationDelegate, roleLabels, vectorizer, Batch);
 
-    int numFeatures = iterator.inputColumns();
-    int numLabels = iterator.totalOutcomes();
+    List<LabelledDocument> testData = trainingDataService.getValidationData();
+    LabelAwareIterator testDelegate = new SimpleLabelAwareIterator(testData);
+    DataSetIterator testIterator = new TfidfVectorizorDataSetIterator(testDelegate, roleLabels, vectorizer, Batch);
+
+    int numFeatures = trainingIterator.inputColumns();
+    int numLabels = trainingIterator.totalOutcomes();
 
     log.info("--hyperparameters--");
-    log.info("epochs: {}", NumEpochs);
+    log.info("max epochs: {}", NumEpochs);
     log.info("seed: {}", Seed);
-    log.info("batch size: {}", Batch);
+    log.info("mini batch size: {}", Batch);
     log.info("learning rate: {}", LearningRate);
     log.info("intput layer num features: {}", numFeatures);
     log.info("hidden layer num neurons: {}", NumNeurons);
     log.info("output layer num labels: {}", numLabels);
 
-    MultiLayerConfiguration conf = getMultiLayerConfiguration(numFeatures, numLabels);
-    MultiLayerNetwork model = new MultiLayerNetwork(conf);
-    model.init();
+    MultiLayerConfiguration networkConf = getNetworkConfiguration(numFeatures, numLabels);
+    MultiLayerNetwork network = new MultiLayerNetwork(networkConf);
+    network.init();
     if (listeners != null) {
-      model.setListeners(listeners);
+      network.setListeners(listeners);
     }
 
+    EarlyStoppingConfiguration<MultiLayerNetwork> stoppingConf = getStoppingConfiguration(validationIterator);
+    EarlyStoppingTrainer trainer = new EarlyStoppingTrainer(stoppingConf, network, trainingIterator);
     log.info("training neural net");
-    for (int i = 1; i <= NumEpochs; i++) {
-      log.info("epoch {}", i);
-      model.fit(iterator);
-    }
-    log.info("done training neural net");
+    Instant start = Instant.now();
+    EarlyStoppingResult<MultiLayerNetwork> result = trainer.fit();
+    Instant end = Instant.now();
+    long duration = Duration.between(start, end).toMinutes();
+    log.info("done training neural net in {} minutes", duration);
 
-    return model;
+    MultiLayerNetwork best = result.getBestModel();
+
+    log.info("evaluating best net");
+    Evaluation eval = best.evaluate(testIterator, roleLabels.getLabels());
+    log.info(eval.stats());
+
+    return best;
   }
   
-  private MultiLayerConfiguration getMultiLayerConfiguration(int numFeatures, int numLabels) {
+  private MultiLayerConfiguration getNetworkConfiguration(int numFeatures, int numLabels) {
 
     MultiLayerConfiguration conf = new NeuralNetConfiguration
       .Builder()
       .seed(Seed)
+      .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
       .weightInit(WeightInit.XAVIER)
       .updater(new Sgd(LearningRate))
       .l2(1e-4)
@@ -110,5 +137,15 @@ public class Trainer {
       .build();
 
     return conf;
+  }
+
+  private EarlyStoppingConfiguration<MultiLayerNetwork> getStoppingConfiguration(DataSetIterator iterator) {
+    return new EarlyStoppingConfiguration
+      .Builder<MultiLayerNetwork>()
+      .epochTerminationConditions(new MaxEpochsTerminationCondition(NumEpochs))
+      .evaluateEveryNEpochs(1)
+      .scoreCalculator(new DataSetLossCalculator(iterator, true))
+      .modelSaver(new InMemoryModelSaver<>())
+      .build();
   }
 }

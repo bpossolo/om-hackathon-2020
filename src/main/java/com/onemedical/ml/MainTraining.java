@@ -10,6 +10,8 @@ import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.stats.StatsListener;
 import org.deeplearning4j.ui.storage.InMemoryStatsStorage;
 import org.deeplearning4j.util.ModelSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
@@ -20,6 +22,8 @@ import org.springframework.core.env.Environment;
 
 @Configuration
 public class MainTraining {
+
+  private static final Logger log = LoggerFactory.getLogger(MainTraining.class);
   
   public static void main(String[] args) throws Exception {
     SpringApplication app = new SpringApplication(MainTraining.class, CommonConfig.class);
@@ -35,7 +39,10 @@ public class MainTraining {
     MultiLayerNetwork roleClassifier = trainer.trainRoleClassifier();
 
     String output = env.getProperty("output-role-model");
+    log.info("serializing model to disk: {}", output);
     ModelSerializer.writeModel(roleClassifier, output, false);
+
+    log.info("all done!");
   }
 
   @Bean("role-trainer")

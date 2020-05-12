@@ -51,7 +51,7 @@ public class TrainingDataService {
     // 10% for validation
     // 10% for test
     int index1 = (int) (docs.size() * 0.8);
-    int index2 = index1 + ((docs.size() - index1) / 2);
+    int index2 = (int) (docs.size() * 0.1) + index1;
 
     training = docs.subList(0, index1);
     validation = docs.subList(index1, index2);

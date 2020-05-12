@@ -44,14 +44,14 @@ mvn compile
 Builds patient message neural-net classifiers.  
 This will take a while...  but you should only need to do this once.  
 ```
-mvn spring-boot:run -Dspring-boot.run.main-class="com.onemedical.ml.MainTraining" -Dspring-boot.run.arguments="--output-role-model=models/role --data-dir=data/training"
+mvn spring-boot:run -Dspring-boot.run.main-class="com.onemedical.ml.MainTraining" -Dspring-boot.run.arguments="--output-role-model=models/role.zip --data-dir=data/training"
 ```
 The serialized neural-net models are persisted to the `models` folder.  
 
 ## Run the web server
 The web server deserializes the neural-nets from the `models` folder and exposes an api endpoint that can be used to classify patient messages.  
 ```
-mvn spring-boot:run -Dspring-boot.run.main-class="com.onemedical.ml.MainApi" -Dspring-boot.run.arguments="--role-model=models/role --data-dir=data/training"
+mvn spring-boot:run -Dspring-boot.run.main-class="com.onemedical.ml.MainApi" -Dspring-boot.run.arguments="--role-model=models/role.zip --data-dir=data/training"
 ```
 
 ## Classify a message
